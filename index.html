@@ -99,7 +99,7 @@
     <p class="subtitle">Доступ к ИИ-консультанту по диагностике авто</p>
 
     <div class="price-block">
-        <div class="price">200 ₽</div>
+        <div class="price" id="priceLabel">300 ₽</div>
         <div class="period">за 30 дней</div>
     </div>
 
@@ -110,7 +110,7 @@
         <li>История диалогов сохраняется</li>
     </ul>
 
-    <button id="payBtn">Оплатить 200 ₽</button>
+    <button id="payBtn">Оплатить 300 ₽</button>
     <div class="status" id="status"></div>
 </div>
 
@@ -120,12 +120,13 @@
     tg.expand();
 
     const PUBLIC_ID = "pk_c9ca1dd01909d25c5f36b6273f0d3";
-    const AMOUNT = 200;
-
     const params = new URLSearchParams(window.location.search);
     const tgId = params.get("tg_id") || (tg.initDataUnsafe?.user?.id ?? "");
+    const AMOUNT = parseInt(params.get("amount") || "300", 10);
 
+    document.getElementById("priceLabel").textContent = AMOUNT + " ₽";
     const payBtn = document.getElementById("payBtn");
+    payBtn.textContent = "Оплатить " + AMOUNT + " ₽";
     const statusEl = document.getElementById("status");
 
     function setStatus(text, kind) {
@@ -166,7 +167,15 @@
                 setStatus("Оплата не прошла: " + (reason || "неизвестная ошибка"), "error");
             },
             onComplete: function (paymentResult, options) {
-                // вызывается всегда после закрытия формы
+                if (paymentResult && paymentResult.success) {
+                    tg.sendData(JSON.stringify({
+                        type: "payment_success",
+                        telegram_id: String(tgId),
+                        transaction_id: options?.transactionId || paymentResult?.transactionId || null,
+                        invoice_id: options?.invoiceId || null
+                    }));
+                    setTimeout(() => tg.close(), 1200);
+                }
             }
         });
     });
