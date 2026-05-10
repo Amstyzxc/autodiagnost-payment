@@ -64,11 +64,15 @@
             color: var(--tg-theme-button-text-color, #ffffff);
             cursor: pointer;
             transition: opacity 0.2s;
+            margin-bottom: 12px;
         }
         button:hover { opacity: 0.9; }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
+        button.secondary {
+            background: #1a8a3a;
+        }
         .status {
-            margin-top: 16px;
+            margin-top: 8px;
             font-size: 14px;
             color: var(--tg-theme-hint-color, #707579);
             min-height: 20px;
@@ -90,6 +94,7 @@
             color: #1a8a3a;
             font-weight: 700;
         }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
@@ -110,7 +115,8 @@
         <li>История диалогов сохраняется</li>
     </ul>
 
-    <button id="payBtn">Оплатить 300 ₽</button>
+    <button type="button" id="payBtn">Оплатить 300 ₽</button>
+    <button type="button" id="confirmBtn" class="secondary hidden">✅ Я оплатил, активировать подписку</button>
     <div class="status" id="status"></div>
 </div>
 
@@ -126,13 +132,33 @@
 
     document.getElementById("priceLabel").textContent = AMOUNT + " ₽";
     const payBtn = document.getElementById("payBtn");
+    const confirmBtn = document.getElementById("confirmBtn");
     payBtn.textContent = "Оплатить " + AMOUNT + " ₽";
     const statusEl = document.getElementById("status");
+
+    let lastInvoiceId = null;
+    let lastTransactionId = null;
+    let alreadySent = false;
 
     function setStatus(text, kind) {
         statusEl.textContent = text;
         statusEl.className = "status" + (kind ? " " + kind : "");
     }
+
+    function sendSuccess() {
+        if (alreadySent) return;
+        alreadySent = true;
+        tg.sendData(JSON.stringify({
+            type: "payment_success",
+            telegram_id: String(tgId),
+            transaction_id: lastTransactionId,
+            invoice_id: lastInvoiceId
+        }));
+        setStatus("Активируем подписку...", "success");
+        setTimeout(() => tg.close(), 1500);
+    }
+
+    confirmBtn.addEventListener("click", sendSuccess);
 
     payBtn.addEventListener("click", () => {
         if (!tgId) {
@@ -142,39 +168,43 @@
         payBtn.disabled = true;
         setStatus("Открываем форму оплаты...");
 
+        const invoiceId = "sub_" + tgId + "_" + Date.now();
+        lastInvoiceId = invoiceId;
+
         const widget = new cp.CloudPayments();
         widget.pay("charge", {
             publicId: PUBLIC_ID,
             description: "Подписка на Автодиагност (1 месяц)",
             amount: AMOUNT,
             currency: "RUB",
-            invoiceId: "sub_" + tgId + "_" + Date.now(),
+            invoiceId: invoiceId,
             accountId: String(tgId),
             data: { telegram_id: String(tgId) }
         }, {
             onSuccess: function (options) {
-                setStatus("Оплата прошла. Активируем подписку...", "success");
-                tg.sendData(JSON.stringify({
-                    type: "payment_success",
-                    telegram_id: String(tgId),
-                    transaction_id: options?.transactionId || null,
-                    invoice_id: options?.invoiceId || null
-                }));
-                setTimeout(() => tg.close(), 1200);
+                lastTransactionId = options?.transactionId || null;
+                sendSuccess();
             },
             onFail: function (reason, options) {
                 payBtn.disabled = false;
                 setStatus("Оплата не прошла: " + (reason || "неизвестная ошибка"), "error");
+                confirmBtn.classList.add("hidden");
             },
             onComplete: function (paymentResult, options) {
                 if (paymentResult && paymentResult.success) {
-                    tg.sendData(JSON.stringify({
-                        type: "payment_success",
-                        telegram_id: String(tgId),
-                        transaction_id: options?.transactionId || paymentResult?.transactionId || null,
-                        invoice_id: options?.invoiceId || null
-                    }));
-                    setTimeout(() => tg.close(), 1200);
+                    lastTransactionId =
+                        options?.transactionId ||
+                        paymentResult?.transactionId ||
+                        lastTransactionId;
+                    sendSuccess();
+                    return;
+                }
+                if (!alreadySent) {
+                    payBtn.classList.add("hidden");
+                    confirmBtn.classList.remove("hidden");
+                    setStatus(
+                        "Если оплата прошла, нажмите кнопку ниже для активации.",
+                    );
                 }
             }
         });
