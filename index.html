@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Оплата подписки — Автодиагност</title>
+    <title>Автодиагност</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://widget.cloudpayments.ru/bundles/cloudpayments"></script>
     <style>
@@ -19,7 +19,7 @@
             padding: 24px;
         }
         .card { width: 100%; max-width: 420px; text-align: center; }
-        .icon { font-size: 48px; margin-bottom: 16px; }
+        .icon { font-size: 56px; margin-bottom: 16px; }
         h1 { font-size: 22px; margin-bottom: 8px; font-weight: 600; }
         .subtitle {
             color: var(--tg-theme-hint-color, #707579);
@@ -27,18 +27,20 @@
             margin-bottom: 24px;
             line-height: 1.4;
         }
-        .price-block {
+        .info-block {
             background: var(--tg-theme-secondary-bg-color, #f4f4f5);
-            border-radius: 12px;
+            border-radius: 14px;
             padding: 20px;
             margin-bottom: 16px;
         }
-        .price { font-size: 36px; font-weight: 700; margin-bottom: 4px; }
-        .period { color: var(--tg-theme-hint-color, #707579); font-size: 14px; }
+        .big-number { font-size: 38px; font-weight: 700; margin-bottom: 4px; }
+        .small-line { color: var(--tg-theme-hint-color, #707579); font-size: 14px; }
+        .status-active { color: #1a8a3a; font-weight: 600; }
+        .status-inactive { color: #d92f2f; font-weight: 600; }
         .recurring-note {
             font-size: 12px;
             color: var(--tg-theme-hint-color, #707579);
-            margin-top: 8px;
+            margin-top: 10px;
             line-height: 1.4;
         }
         button {
@@ -52,18 +54,15 @@
             color: var(--tg-theme-button-text-color, #ffffff);
             cursor: pointer;
             transition: opacity 0.2s;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
         button:hover { opacity: 0.9; }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
-        .status {
-            margin-top: 8px;
-            font-size: 14px;
-            color: var(--tg-theme-hint-color, #707579);
-            min-height: 20px;
+        button.secondary {
+            background: var(--tg-theme-secondary-bg-color, #efefef);
+            color: var(--tg-theme-text-color, #000);
         }
-        .status.error { color: #d92f2f; }
-        .status.success { color: #1a8a3a; }
+        button.danger { background: #d92f2f; color: #fff; }
         .features {
             text-align: left;
             margin: 16px 0 24px 0;
@@ -79,32 +78,18 @@
             color: #1a8a3a;
             font-weight: 700;
         }
+        .status {
+            margin-top: 8px;
+            font-size: 14px;
+            color: var(--tg-theme-hint-color, #707579);
+            min-height: 20px;
+        }
+        .status.error { color: #d92f2f; }
+        .status.success { color: #1a8a3a; }
     </style>
 </head>
 <body>
-<div class="card">
-    <div class="icon">🔧</div>
-    <h1>Подписка на Автодиагност</h1>
-    <p class="subtitle">Доступ к ИИ-консультанту по диагностике авто</p>
-
-    <div class="price-block">
-        <div class="price" id="priceLabel">300 ₽</div>
-        <div class="period">за 30 дней · автопродление</div>
-        <div class="recurring-note">
-            Подписка продлевается автоматически каждые 30 дней. Отменить можно в любой момент через меню бота.
-        </div>
-    </div>
-
-    <ul class="features">
-        <li>Безлимитные вопросы по авто</li>
-        <li>Расшифровка OBD-II кодов</li>
-        <li>Распознавание голосовых сообщений</li>
-        <li>История диалогов сохраняется</li>
-    </ul>
-
-    <button type="button" id="payBtn">Оплатить 300 ₽</button>
-    <div class="status" id="status"></div>
-</div>
+<div class="card" id="root"></div>
 
 <script>
     const tg = window.Telegram.WebApp;
@@ -113,75 +98,177 @@
 
     const PUBLIC_ID = "pk_c9ca1dd01909d25c5f36b6273f0d3";
     const params = new URLSearchParams(window.location.search);
+
     const tgId = params.get("tg_id") || (tg.initDataUnsafe?.user?.id ?? "");
     const AMOUNT = parseInt(params.get("amount") || "300", 10);
-    const INVOICE_ID =
-        params.get("invoice") ||
-        ("sub_" + tgId + "_" + Date.now());
+    const INVOICE_ID = params.get("invoice") || ("sub_" + tgId + "_" + Date.now());
+    const MODE = (params.get("mode") || "buy").toLowerCase();
+    const DAYS_LEFT = parseInt(params.get("days_left") || "0", 10);
+    const EXPIRES_AT = params.get("expires_at") || "";
+    const SUPPORT = params.get("support") || "@support";
 
-    document.getElementById("priceLabel").textContent = AMOUNT + " ₽";
-    const payBtn = document.getElementById("payBtn");
-    payBtn.textContent = "Оплатить " + AMOUNT + " ₽";
-    const statusEl = document.getElementById("status");
+    const root = document.getElementById("root");
 
     let alreadySent = false;
-
-    function setStatus(text, kind) {
-        statusEl.textContent = text;
-        statusEl.className = "status" + (kind ? " " + kind : "");
-    }
-
-    function sendSuccess(transactionId) {
+    function send(payload) {
         if (alreadySent) return;
         alreadySent = true;
-        setStatus("Активируем подписку...", "success");
-        tg.sendData(JSON.stringify({
-            type: "payment_success",
-            telegram_id: String(tgId),
-            transaction_id: transactionId || null,
-            invoice_id: INVOICE_ID
-        }));
-        setTimeout(() => tg.close(), 1500);
+        tg.sendData(JSON.stringify(payload));
+        setTimeout(() => tg.close(), 1200);
     }
 
-    payBtn.addEventListener("click", () => {
-        if (!tgId) {
-            setStatus("Не удалось получить Telegram ID. Откройте оплату из бота.", "error");
-            return;
-        }
-        payBtn.disabled = true;
-        setStatus("Открываем форму оплаты...");
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, c =>
+            ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
 
-        const widget = new cp.CloudPayments();
-        widget.pay("charge", {
-            publicId: PUBLIC_ID,
-            description: "Подписка на Автодиагност (1 месяц)",
-            amount: AMOUNT,
-            currency: "RUB",
-            invoiceId: INVOICE_ID,
-            accountId: String(tgId),
-            data: { telegram_id: String(tgId) },
-            recurrent: {
-                interval: "Month",
-                period: 1,
+    function renderBuy() {
+        root.innerHTML = `
+            <div class="icon">🔧</div>
+            <h1>Подписка на Автодиагност</h1>
+            <p class="subtitle">Доступ к ИИ-консультанту по диагностике авто</p>
+            <div class="info-block">
+                <div class="big-number" id="priceLabel">${AMOUNT} ₽</div>
+                <div class="small-line">за 30 дней · автопродление</div>
+                <div class="recurring-note">
+                    Подписка продлевается автоматически каждые 30 дней. Отменить можно в любой момент.
+                </div>
+            </div>
+            <ul class="features">
+                <li>Безлимитные вопросы по авто</li>
+                <li>Расшифровка OBD-II кодов</li>
+                <li>Распознавание голосовых сообщений</li>
+                <li>История диалогов сохраняется</li>
+            </ul>
+            <button type="button" id="payBtn">Оплатить ${AMOUNT} ₽</button>
+            <div class="status" id="status"></div>
+        `;
+        const payBtn = document.getElementById("payBtn");
+        const statusEl = document.getElementById("status");
+        function setStatus(t, k) {
+            statusEl.textContent = t;
+            statusEl.className = "status" + (k ? " " + k : "");
+        }
+        payBtn.addEventListener("click", () => {
+            if (!tgId) {
+                setStatus("Не удалось получить Telegram ID. Откройте оплату из бота.", "error");
+                return;
+            }
+            payBtn.disabled = true;
+            setStatus("Открываем форму оплаты...");
+            const widget = new cp.CloudPayments();
+            widget.pay("charge", {
+                publicId: PUBLIC_ID,
+                description: "Подписка на Автодиагност (1 месяц)",
                 amount: AMOUNT,
-                currencyCode: "RUB"
-            }
-        }, {
-            onSuccess: function (options) {
-                sendSuccess(options?.transactionId);
-            },
-            onFail: function (reason) {
-                payBtn.disabled = false;
-                setStatus("Оплата не прошла: " + (reason || "неизвестная ошибка"), "error");
-            },
-            onComplete: function (paymentResult, options) {
-                if (paymentResult && paymentResult.success && !alreadySent) {
-                    sendSuccess(options?.transactionId || paymentResult?.transactionId);
+                currency: "RUB",
+                invoiceId: INVOICE_ID,
+                accountId: String(tgId),
+                data: { telegram_id: String(tgId) },
+                recurrent: {
+                    interval: "Month",
+                    period: 1,
+                    amount: AMOUNT,
+                    currencyCode: "RUB"
                 }
-            }
+            }, {
+                onSuccess: function (options) {
+                    send({
+                        type: "payment_success",
+                        telegram_id: String(tgId),
+                        transaction_id: options?.transactionId || null,
+                        invoice_id: INVOICE_ID
+                    });
+                },
+                onFail: function (reason) {
+                    payBtn.disabled = false;
+                    setStatus("Оплата не прошла: " + (reason || "неизвестная ошибка"), "error");
+                },
+                onComplete: function (paymentResult, options) {
+                    if (paymentResult && paymentResult.success && !alreadySent) {
+                        send({
+                            type: "payment_success",
+                            telegram_id: String(tgId),
+                            transaction_id: options?.transactionId || paymentResult?.transactionId || null,
+                            invoice_id: INVOICE_ID
+                        });
+                    }
+                }
+            });
         });
-    });
+    }
+
+    function renderDashboard() {
+        const isActive = DAYS_LEFT > 0;
+        if (isActive) {
+            root.innerHTML = `
+                <div class="icon">👤</div>
+                <h1>Личный кабинет</h1>
+                <p class="subtitle">Статус подписки на Автодиагност</p>
+                <div class="info-block">
+                    <div class="status-active">Подписка активна ✅</div>
+                    <div class="big-number">${DAYS_LEFT} ${pluralDays(DAYS_LEFT)}</div>
+                    <div class="small-line">до ${escapeHtml(EXPIRES_AT || "конца периода")}</div>
+                    <div class="recurring-note">
+                        Подписка продлевается автоматически каждые 30 дней.
+                    </div>
+                </div>
+                <button type="button" id="renewBtn">💳 Продлить подписку</button>
+                <button type="button" id="cancelBtn" class="danger">❌ Отменить подписку</button>
+                <button type="button" id="supportBtn" class="secondary">🛠 Тех поддержка</button>
+            `;
+        } else {
+            root.innerHTML = `
+                <div class="icon">👤</div>
+                <h1>Личный кабинет</h1>
+                <p class="subtitle">Статус подписки на Автодиагност</p>
+                <div class="info-block">
+                    <div class="status-inactive">Подписка не активна</div>
+                    <div class="small-line" style="margin-top:6px">
+                        Оформите подписку, чтобы получить доступ к ИИ-консультанту
+                    </div>
+                </div>
+                <button type="button" id="renewBtn">💳 Оформить подписку</button>
+                <button type="button" id="supportBtn" class="secondary">🛠 Тех поддержка</button>
+            `;
+        }
+
+        const renewBtn = document.getElementById("renewBtn");
+        const cancelBtn = document.getElementById("cancelBtn");
+        const supportBtn = document.getElementById("supportBtn");
+
+        if (renewBtn) {
+            renewBtn.addEventListener("click", () => {
+                send({ type: "action_buy", telegram_id: String(tgId) });
+            });
+        }
+        if (cancelBtn) {
+            cancelBtn.addEventListener("click", () => {
+                if (!confirm("Точно отменить подписку? Автопродление будет остановлено.")) return;
+                send({ type: "action_cancel", telegram_id: String(tgId) });
+            });
+        }
+        if (supportBtn) {
+            supportBtn.addEventListener("click", () => {
+                send({ type: "action_support", telegram_id: String(tgId) });
+            });
+        }
+    }
+
+    function pluralDays(n) {
+        const mod10 = n % 10;
+        const mod100 = n % 100;
+        if (mod100 >= 11 && mod100 <= 14) return "дней";
+        if (mod10 === 1) return "день";
+        if (mod10 >= 2 && mod10 <= 4) return "дня";
+        return "дней";
+    }
+
+    if (MODE === "dashboard") {
+        renderDashboard();
+    } else {
+        renderBuy();
+    }
 </script>
 </body>
 </html>
