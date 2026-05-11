@@ -244,7 +244,6 @@
         }
         if (cancelBtn) {
             cancelBtn.addEventListener("click", () => {
-                if (!confirm("Точно отменить подписку? Автопродление будет остановлено.")) return;
                 send({ type: "action_cancel", telegram_id: String(tgId) });
             });
         }
