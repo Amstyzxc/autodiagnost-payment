@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Автодиагност — личный кабинет</title>
+    <title>Оплата подписки — Автодиагност</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://widget.cloudpayments.ru/bundles/cloudpayments"></script>
     <style>
@@ -13,44 +13,34 @@
             background: var(--tg-theme-bg-color, #ffffff);
             color: var(--tg-theme-text-color, #000000);
             min-height: 100vh;
-            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
         }
-        .wrap { width: 100%; max-width: 480px; margin: 0 auto; }
-        .view { display: none; }
-        .view.active { display: block; }
-        .hero { text-align: center; margin-bottom: 24px; }
-        .hero .icon { font-size: 56px; margin-bottom: 8px; }
-        .hero h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
-        .hero .sub { color: var(--tg-theme-hint-color, #707579); font-size: 14px; }
-        .card {
+        .card { width: 100%; max-width: 420px; text-align: center; }
+        .icon { font-size: 48px; margin-bottom: 16px; }
+        h1 { font-size: 22px; margin-bottom: 8px; font-weight: 600; }
+        .subtitle {
+            color: var(--tg-theme-hint-color, #707579);
+            font-size: 15px;
+            margin-bottom: 24px;
+            line-height: 1.4;
+        }
+        .price-block {
             background: var(--tg-theme-secondary-bg-color, #f4f4f5);
-            border-radius: 16px;
+            border-radius: 12px;
             padding: 20px;
             margin-bottom: 16px;
         }
-        .card h2 {
-            font-size: 13px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--tg-theme-hint-color, #707579);
-            margin-bottom: 12px;
-        }
-        .badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 999px;
+        .price { font-size: 36px; font-weight: 700; margin-bottom: 4px; }
+        .period { color: var(--tg-theme-hint-color, #707579); font-size: 14px; }
+        .recurring-note {
             font-size: 12px;
-            font-weight: 600;
-            margin-bottom: 12px;
+            color: var(--tg-theme-hint-color, #707579);
+            margin-top: 8px;
+            line-height: 1.4;
         }
-        .badge.active { background: #d4f4dd; color: #1a8a3a; }
-        .badge.inactive { background: #f0f0f0; color: #707579; }
-        .days-big { font-size: 56px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
-        .days-label { color: var(--tg-theme-hint-color, #707579); font-size: 14px; margin-bottom: 8px; }
-        .expires-line { color: var(--tg-theme-hint-color, #707579); font-size: 13px; }
-        .empty-state { text-align: center; padding: 12px 0; }
-        .empty-state p { color: var(--tg-theme-hint-color, #707579); font-size: 14px; line-height: 1.5; }
         button {
             width: 100%;
             padding: 14px 20px;
@@ -62,85 +52,58 @@
             color: var(--tg-theme-button-text-color, #ffffff);
             cursor: pointer;
             transition: opacity 0.2s;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
         }
         button:hover { opacity: 0.9; }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
-        button.secondary { background: #1a8a3a; }
-        button.danger { background: #d92f2f; }
-        button.ghost {
-            background: transparent;
+        .status {
+            margin-top: 8px;
+            font-size: 14px;
             color: var(--tg-theme-hint-color, #707579);
-            border: 1px solid var(--tg-theme-hint-color, #707579);
+            min-height: 20px;
         }
-        .features { margin: 12px 0 20px 0; font-size: 14px; color: var(--tg-theme-hint-color, #707579); line-height: 1.7; }
-        .features li { list-style: none; padding-left: 20px; position: relative; }
-        .features li::before { content: "✓"; position: absolute; left: 0; color: #1a8a3a; font-weight: 700; }
-        .price-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px; }
-        .price-row .label { color: var(--tg-theme-hint-color, #707579); }
-        .price-row .price { font-size: 28px; font-weight: 700; }
-        .status { margin-top: 8px; font-size: 14px; color: var(--tg-theme-hint-color, #707579); min-height: 20px; text-align: center; }
         .status.error { color: #d92f2f; }
         .status.success { color: #1a8a3a; }
-        .hidden { display: none !important; }
+        .features {
+            text-align: left;
+            margin: 16px 0 24px 0;
+            font-size: 14px;
+            color: var(--tg-theme-hint-color, #707579);
+            line-height: 1.6;
+        }
+        .features li { list-style: none; padding-left: 20px; position: relative; }
+        .features li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #1a8a3a;
+            font-weight: 700;
+        }
     </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="view" id="view-dashboard">
-    <div class="hero">
-      <div class="icon">🔧</div>
-      <h1>Автодиагност</h1>
-      <div class="sub">Личный кабинет</div>
-    </div>
-    <div class="card">
-      <h2>Статус подписки</h2>
-      <div id="dashStatus"></div>
-    </div>
-    <button type="button" id="dashBuyBtn">💳 Оплатить подписку</button>
-    <button type="button" id="dashCancelBtn" class="danger hidden">❌ Отменить подписку</button>
-    <button type="button" id="dashSupportBtn" class="ghost">🛠️ Тех поддержка</button>
-  </div>
+<div class="card">
+    <div class="icon">🔧</div>
+    <h1>Подписка на Автодиагност</h1>
+    <p class="subtitle">Доступ к ИИ-консультанту по диагностике авто</p>
 
-  <div class="view" id="view-buy">
-    <div class="hero">
-      <div class="icon">💳</div>
-      <h1>Оплата подписки</h1>
-      <div class="sub">Доступ к ИИ-консультанту по диагностике авто</div>
+    <div class="price-block">
+        <div class="price" id="priceLabel">300 ₽</div>
+        <div class="period">за 30 дней · автопродление</div>
+        <div class="recurring-note">
+            Подписка продлевается автоматически каждые 30 дней. Отменить можно в любой момент через меню бота.
+        </div>
     </div>
-    <div class="card">
-      <div class="price-row">
-        <div class="label">Стоимость</div>
-        <div class="price"><span id="buyPrice">300</span> ₽</div>
-      </div>
-      <div class="price-row">
-        <div class="label">Период</div>
-        <div>30 дней</div>
-      </div>
-    </div>
+
     <ul class="features">
-      <li>Безлимитные вопросы по авто</li>
-      <li>Расшифровка OBD-II кодов</li>
-      <li>Распознавание голосовых сообщений</li>
-      <li>История диалогов сохраняется</li>
+        <li>Безлимитные вопросы по авто</li>
+        <li>Расшифровка OBD-II кодов</li>
+        <li>Распознавание голосовых сообщений</li>
+        <li>История диалогов сохраняется</li>
     </ul>
-    <button type="button" id="buyPayBtn">Оплатить <span id="buyBtnAmount">300</span> ₽</button>
-    <button type="button" id="buyConfirmBtn" class="secondary hidden">✅ Я оплатил, активировать подписку</button>
-    <button type="button" id="buyBackBtn" class="ghost">← Назад</button>
-    <div class="status" id="buyStatus"></div>
-  </div>
 
-  <div class="view" id="view-cancel">
-    <div class="hero">
-      <div class="icon">❌</div>
-      <h1>Отмена подписки</h1>
-      <div class="sub">Подтвердите карту, с которой оплачивалась подписка — мы найдём её и остановим автопродление.</div>
-    </div>
-    <button type="button" id="cancelBtn" class="danger">Подтвердить и отменить</button>
-    <button type="button" id="cancelConfirmBtn" class="secondary hidden">✅ Карта подтверждена, отменить подписку</button>
-    <button type="button" id="cancelBackBtn" class="ghost">← Назад</button>
-    <div class="status" id="cancelStatus"></div>
-  </div>
+    <button type="button" id="payBtn">Оплатить 300 ₽</button>
+    <div class="status" id="status"></div>
 </div>
 
 <script>
@@ -148,154 +111,77 @@
     tg.ready();
     tg.expand();
 
-    const PUBLIC_ID = "pk_d0aa27bd34e411ba1b72705f71ddc";
+    const PUBLIC_ID = "pk_c9ca1dd01909d25c5f36b6273f0d3";
     const params = new URLSearchParams(window.location.search);
     const tgId = params.get("tg_id") || (tg.initDataUnsafe?.user?.id ?? "");
     const AMOUNT = parseInt(params.get("amount") || "300", 10);
-    const MODE = (params.get("mode") || "dashboard").toLowerCase();
-    const DAYS_LEFT = parseInt(params.get("days_left") || "0", 10);
-    const EXPIRES_AT = params.get("expires_at") || "";
-    const SUPPORT = params.get("support") || "@support";
+    const INVOICE_ID =
+        params.get("invoice") ||
+        ("sub_" + tgId + "_" + Date.now());
+
+    document.getElementById("priceLabel").textContent = AMOUNT + " ₽";
+    const payBtn = document.getElementById("payBtn");
+    payBtn.textContent = "Оплатить " + AMOUNT + " ₽";
+    const statusEl = document.getElementById("status");
 
     let alreadySent = false;
-    const dashStatus = document.getElementById("dashStatus");
-    const dashBuyBtn = document.getElementById("dashBuyBtn");
-    const dashCancelBtn = document.getElementById("dashCancelBtn");
-    const dashSupportBtn = document.getElementById("dashSupportBtn");
 
-    function pluralizeDays(n) {
-        const mod10 = n % 10, mod100 = n % 100;
-        if (mod10 === 1 && mod100 !== 11) return "день";
-        if ([2,3,4].includes(mod10) && ![12,13,14].includes(mod100)) return "дня";
-        return "дней";
+    function setStatus(text, kind) {
+        statusEl.textContent = text;
+        statusEl.className = "status" + (kind ? " " + kind : "");
     }
-    function renderDashboard() {
-        const isActive = DAYS_LEFT > 0;
-        if (isActive) {
-            dashStatus.innerHTML = `
-                <div class="badge active">✅ Активна</div>
-                <div class="days-big">${DAYS_LEFT}</div>
-                <div class="days-label">${pluralizeDays(DAYS_LEFT)} осталось</div>
-                <div class="expires-line">${EXPIRES_AT ? "Активна до " + EXPIRES_AT : ""}</div>
-            `;
-            dashBuyBtn.textContent = "🔄 Продлить подписку";
-            dashCancelBtn.classList.remove("hidden");
-        } else {
-            dashStatus.innerHTML = `
-                <div class="badge inactive">⚪ Неактивна</div>
-                <div class="empty-state"><p>Активируйте подписку, чтобы получить доступ к ИИ-автодиагносту.</p></div>
-            `;
-            dashBuyBtn.textContent = "💳 Оплатить подписку";
-            dashCancelBtn.classList.add("hidden");
-        }
-    }
-    dashBuyBtn.addEventListener("click", () => showView("buy"));
-    dashCancelBtn.addEventListener("click", () => showView("cancel"));
-    dashSupportBtn.addEventListener("click", () => {
-        const username = SUPPORT.replace(/^@/, "");
-        tg.openTelegramLink(`https://t.me/${username}`);
-    });
 
-    const views = ["dashboard","buy","cancel"];
-    function showView(name) {
-        views.forEach(v => {
-            const el = document.getElementById("view-" + v);
-            if (el) el.classList.toggle("active", v === name);
-        });
-        if (name === "dashboard") tg.BackButton.hide();
-        else tg.BackButton.show();
-    }
-    tg.BackButton.onClick(() => showView("dashboard"));
-
-    const buyPayBtn = document.getElementById("buyPayBtn");
-    const buyConfirmBtn = document.getElementById("buyConfirmBtn");
-    const buyBackBtn = document.getElementById("buyBackBtn");
-    const buyStatus = document.getElementById("buyStatus");
-    document.getElementById("buyPrice").textContent = AMOUNT;
-    document.getElementById("buyBtnAmount").textContent = AMOUNT;
-    buyBackBtn.addEventListener("click", () => showView("dashboard"));
-
-    let lastInvoiceId = null, lastTransactionId = null;
-    function setBuyStatus(t,k){ buyStatus.textContent=t; buyStatus.className="status"+(k?" "+k:""); }
-    function sendBuy() {
+    function sendSuccess(transactionId) {
         if (alreadySent) return;
         alreadySent = true;
-        tg.sendData(JSON.stringify({ type:"payment_success", telegram_id:String(tgId), transaction_id:lastTransactionId, invoice_id:lastInvoiceId }));
-        setBuyStatus("Активируем подписку...", "success");
+        setStatus("Активируем подписку...", "success");
+        tg.sendData(JSON.stringify({
+            type: "payment_success",
+            telegram_id: String(tgId),
+            transaction_id: transactionId || null,
+            invoice_id: INVOICE_ID
+        }));
         setTimeout(() => tg.close(), 1500);
     }
-    buyPayBtn.addEventListener("click", () => {
-        if (!tgId) { setBuyStatus("Не удалось получить Telegram ID. Откройте оплату из бота.","error"); return; }
-        buyPayBtn.disabled = true; setBuyStatus("Открываем форму оплаты...");
-        const invoiceId = "sub_" + tgId + "_" + Date.now();
-        lastInvoiceId = invoiceId;
+
+    payBtn.addEventListener("click", () => {
+        if (!tgId) {
+            setStatus("Не удалось получить Telegram ID. Откройте оплату из бота.", "error");
+            return;
+        }
+        payBtn.disabled = true;
+        setStatus("Открываем форму оплаты...");
+
         const widget = new cp.CloudPayments();
         widget.pay("charge", {
             publicId: PUBLIC_ID,
             description: "Подписка на Автодиагност (1 месяц)",
-            amount: AMOUNT, currency: "RUB", invoiceId: invoiceId,
+            amount: AMOUNT,
+            currency: "RUB",
+            invoiceId: INVOICE_ID,
             accountId: String(tgId),
-            data: { telegram_id: String(tgId), purpose: "subscribe" }
+            data: { telegram_id: String(tgId) },
+            recurrent: {
+                interval: "Month",
+                period: 1,
+                amount: AMOUNT,
+                currencyCode: "RUB"
+            }
         }, {
-            onSuccess: function (options) { lastTransactionId = options?.transactionId || null; sendBuy(); },
-            onFail: function (reason) { buyPayBtn.disabled = false; setBuyStatus("Оплата не прошла: " + (reason || "неизвестная ошибка"), "error"); buyConfirmBtn.classList.add("hidden"); },
+            onSuccess: function (options) {
+                sendSuccess(options?.transactionId);
+            },
+            onFail: function (reason) {
+                payBtn.disabled = false;
+                setStatus("Оплата не прошла: " + (reason || "неизвестная ошибка"), "error");
+            },
             onComplete: function (paymentResult, options) {
-                if (paymentResult && paymentResult.success) {
-                    lastTransactionId = options?.transactionId || paymentResult?.transactionId || lastTransactionId;
-                    sendBuy(); return;
-                }
-                if (!alreadySent) {
-                    buyPayBtn.classList.add("hidden");
-                    buyConfirmBtn.classList.remove("hidden");
-                    setBuyStatus("Если оплата прошла, нажмите кнопку ниже для активации.");
+                if (paymentResult && paymentResult.success && !alreadySent) {
+                    sendSuccess(options?.transactionId || paymentResult?.transactionId);
                 }
             }
         });
     });
-    buyConfirmBtn.addEventListener("click", sendBuy);
-
-    const cancelBtn = document.getElementById("cancelBtn");
-    const cancelConfirmBtn = document.getElementById("cancelConfirmBtn");
-    const cancelBackBtn = document.getElementById("cancelBackBtn");
-    const cancelStatus = document.getElementById("cancelStatus");
-    cancelBackBtn.addEventListener("click", () => showView("dashboard"));
-    function setCancelStatus(t,k){ cancelStatus.textContent=t; cancelStatus.className="status"+(k?" "+k:""); }
-    function sendCancel() {
-        if (alreadySent) return;
-        alreadySent = true;
-        tg.sendData(JSON.stringify({ type: "cancel_subscription", telegram_id: String(tgId) }));
-        setCancelStatus("Отменяем подписку...", "success");
-        setTimeout(() => tg.close(), 1500);
-    }
-    cancelBtn.addEventListener("click", () => {
-        if (!tgId) { setCancelStatus("Не удалось получить Telegram ID. Откройте отмену из бота.","error"); return; }
-        cancelBtn.disabled = true; setCancelStatus("Открываем форму подтверждения карты...");
-        const widget = new cp.CloudPayments();
-        widget.charge({
-            publicId: PUBLIC_ID,
-            description: "Подтверждение карты для отмены подписки",
-            amount: 1, currency: "RUB",
-            invoiceId: "cancel_" + tgId + "_" + Date.now(),
-            accountId: String(tgId), skin: "mini",
-            data: { telegram_id: String(tgId), purpose: "cancel" }
-        }, {
-            onSuccess: function () { sendCancel(); },
-            onFail: function (reason) { cancelBtn.disabled = false; setCancelStatus("Не удалось подтвердить карту: " + (reason || "неизвестная ошибка"), "error"); cancelConfirmBtn.classList.add("hidden"); },
-            onComplete: function (paymentResult) {
-                if (paymentResult && paymentResult.success) { sendCancel(); return; }
-                if (!alreadySent) {
-                    cancelBtn.classList.add("hidden");
-                    cancelConfirmBtn.classList.remove("hidden");
-                    setCancelStatus("Если карта подтвердилась, нажмите кнопку ниже для отмены подписки.");
-                }
-            }
-        });
-    });
-    cancelConfirmBtn.addEventListener("click", sendCancel);
-
-    renderDashboard();
-    if (MODE === "buy" || MODE === "cancel") showView(MODE);
-    else showView("dashboard");
 </script>
 </body>
 </html>
