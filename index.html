@@ -157,19 +157,23 @@
             payBtn.disabled = true;
             setStatus("Открываем форму оплаты...");
             const widget = new cp.CloudPayments();
-            widget.pay("charge", {
+                        widget.pay("charge", {
                 publicId: PUBLIC_ID,
                 description: "Подписка на Автодиагност (1 месяц)",
                 amount: AMOUNT,
                 currency: "RUB",
                 invoiceId: INVOICE_ID,
                 accountId: String(tgId),
-                data: { telegram_id: String(tgId) },
-                recurrent: {
-                    interval: "Month",
-                    period: 1,
-                    amount: AMOUNT,
-                    currencyCode: "RUB"
+                data: {
+                    telegram_id: String(tgId),
+                    CloudPayments: {
+                        recurrent: {
+                            interval: "Month",
+                            period: 1,
+                            amount: AMOUNT,
+                            currencyCode: "RUB"
+                        }
+                    }
                 }
             }, {
                 onSuccess: function (options) {
