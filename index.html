@@ -157,47 +157,32 @@
             payBtn.disabled = true;
             setStatus("Открываем форму оплаты...");
             const widget = new cp.CloudPayments();
-                        widget.pay("charge", {
+            widget.charge({
                 publicId: PUBLIC_ID,
-                description: "Подписка на Автодиагност (1 месяц)",
+                description: "Подписка на Автодиагност (30 дней · автопродление)",
                 amount: AMOUNT,
                 currency: "RUB",
                 invoiceId: INVOICE_ID,
                 accountId: String(tgId),
-                data: {
+                skin: "mini",
+                data: { telegram_id: String(tgId) },
+                recurrent: {
+                    interval: "Month",
+                    period: 1,
+                    amount: AMOUNT
+                }
+            },
+            function (options) {
+                send({
+                    type: "payment_success",
                     telegram_id: String(tgId),
-                    CloudPayments: {
-                        recurrent: {
-                            interval: "Month",
-                            period: 1,
-                            amount: AMOUNT,
-                            currencyCode: "RUB"
-                        }
-                    }
-                }
-            }, {
-                onSuccess: function (options) {
-                    send({
-                        type: "payment_success",
-                        telegram_id: String(tgId),
-                        transaction_id: options?.transactionId || null,
-                        invoice_id: INVOICE_ID
-                    });
-                },
-                onFail: function (reason) {
-                    payBtn.disabled = false;
-                    setStatus("Оплата не прошла: " + (reason || "неизвестная ошибка"), "error");
-                },
-                onComplete: function (paymentResult, options) {
-                    if (paymentResult && paymentResult.success && !alreadySent) {
-                        send({
-                            type: "payment_success",
-                            telegram_id: String(tgId),
-                            transaction_id: options?.transactionId || paymentResult?.transactionId || null,
-                            invoice_id: INVOICE_ID
-                        });
-                    }
-                }
+                    transaction_id: options && options.transactionId ? options.transactionId : null,
+                    invoice_id: INVOICE_ID
+                });
+            },
+            function (reason, options) {
+                payBtn.disabled = false;
+                setStatus("Оплата не прошла: " + (reason || "неизвестная ошибка"), "error");
             });
         });
     }
