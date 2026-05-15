@@ -117,6 +117,17 @@
         setTimeout(() => tg.close(), 1200);
     }
 
+    function showBackTo(render) {
+        if (!tg.BackButton) return;
+        tg.BackButton.show();
+        const handler = () => {
+            tg.BackButton.hide();
+            tg.BackButton.offClick(handler);
+            render();
+        };
+        tg.BackButton.onClick(handler);
+    }
+    
     function escapeHtml(s) {
         return String(s).replace(/[&<>"']/g, c =>
             ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -226,11 +237,13 @@
         const cancelBtn = document.getElementById("cancelBtn");
         const supportBtn = document.getElementById("supportBtn");
 
-        if (renewBtn) {
-            renewBtn.addEventListener("click", () => {
-                send({ type: "action_buy", telegram_id: String(tgId) });
+                if (renewBtn) {
+                 renewBtn.addEventListener("click", () => {
+                // Переключаемся на экран оплаты внутри мини-аппа — без закрытия, чтобы виджет CP открылся одним кликом.
+                renderBuy();
+                showBackTo(renderDashboard);
             });
-        }
+         }
         if (cancelBtn) {
             cancelBtn.addEventListener("click", () => {
                 send({ type: "action_cancel", telegram_id: String(tgId) });
