@@ -127,7 +127,7 @@
         };
         tg.BackButton.onClick(handler);
     }
-    
+
     function escapeHtml(s) {
         return String(s).replace(/[&<>"']/g, c =>
             ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -152,49 +152,86 @@
                 <li>История диалогов сохраняется</li>
             </ul>
             <button type="button" id="payBtn">Оплатить ${AMOUNT} ₽</button>
+            <button type="button" id="checkBtn" class="secondary" style="display:none">✅ Я уже оплатил — проверить</button>
             <div class="status" id="status"></div>
         `;
         const payBtn = document.getElementById("payBtn");
+        const checkBtn = document.getElementById("checkBtn");
         const statusEl = document.getElementById("status");
+
         function setStatus(t, k) {
             statusEl.textContent = t;
             statusEl.className = "status" + (k ? " " + k : "");
         }
+
+        function showCheckFallback() {
+            checkBtn.style.display = "";
+        }
+
+        checkBtn.addEventListener("click", () => {
+            checkBtn.disabled = true;
+            setStatus("Проверяем оплату через CloudPayments…");
+            send({
+                type: "check_payment",
+                telegram_id: String(tgId),
+                invoice_id: INVOICE_ID
+            });
+        });
+
         payBtn.addEventListener("click", () => {
             if (!tgId) {
                 setStatus("Не удалось получить Telegram ID. Откройте оплату из бота.", "error");
                 return;
             }
             payBtn.disabled = true;
-            setStatus("Открываем форму оплаты...");
+            setStatus("Открываем форму оплаты…");
             const widget = new cp.CloudPayments();
-            widget.charge({
-                publicId: PUBLIC_ID,
-                description: "Подписка на Автодиагност (30 дней · автопродление)",
-                amount: AMOUNT,
-                currency: "RUB",
-                invoiceId: INVOICE_ID,
-                accountId: String(tgId),
-                skin: "mini",
-                data: { telegram_id: String(tgId) },
-                recurrent: {
-                    interval: "Month",
-                    period: 1,
-                    amount: AMOUNT
+            widget.pay("charge",
+                {
+                    publicId: PUBLIC_ID,
+                    description: "Подписка на Автодиагност (30 дней · автопродление)",
+                    amount: AMOUNT,
+                    currency: "RUB",
+                    invoiceId: INVOICE_ID,
+                    accountId: String(tgId),
+                    skin: "mini",
+                    data: { telegram_id: String(tgId) },
+                    recurrent: {
+                        interval: "Month",
+                        period: 1,
+                        amount: AMOUNT,
+                        startDate: new Date().toISOString()
+                    }
+                },
+                {
+                    onSuccess: function (options) {
+                        send({
+                            type: "payment_success",
+                            telegram_id: String(tgId),
+                            transaction_id: (options && options.transactionId) || null,
+                            invoice_id: INVOICE_ID
+                        });
+                    },
+                    onFail: function (reason, options) {
+                        payBtn.disabled = false;
+                        setStatus("Оплата отменена или не прошла. Если деньги уже списались — нажми «Я уже оплатил».", "error");
+                        showCheckFallback();
+                    },
+                    onComplete: function (paymentResult, options) {
+                        if (alreadySent) return;
+                        if (paymentResult && paymentResult.success) {
+                            send({
+                                type: "payment_success",
+                                telegram_id: String(tgId),
+                                transaction_id: (paymentResult.transactionId) || null,
+                                invoice_id: INVOICE_ID
+                            });
+                            return;
+                        }
+                        showCheckFallback();
+                    }
                 }
-            },
-            function (options) {
-                send({
-                    type: "payment_success",
-                    telegram_id: String(tgId),
-                    transaction_id: options && options.transactionId ? options.transactionId : null,
-                    invoice_id: INVOICE_ID
-                });
-            },
-            function (reason, options) {
-                payBtn.disabled = false;
-                setStatus("Оплата не прошла: " + (reason || "неизвестная ошибка"), "error");
-            });
+            );
         });
     }
 
@@ -237,13 +274,12 @@
         const cancelBtn = document.getElementById("cancelBtn");
         const supportBtn = document.getElementById("supportBtn");
 
-                if (renewBtn) {
-                 renewBtn.addEventListener("click", () => {
-                // Переключаемся на экран оплаты внутри мини-аппа — без закрытия, чтобы виджет CP открылся одним кликом.
+        if (renewBtn) {
+            renewBtn.addEventListener("click", () => {
                 renderBuy();
                 showBackTo(renderDashboard);
             });
-         }
+        }
         if (cancelBtn) {
             cancelBtn.addEventListener("click", () => {
                 send({ type: "action_cancel", telegram_id: String(tgId) });
