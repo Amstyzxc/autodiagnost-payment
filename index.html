@@ -200,7 +200,7 @@
                         interval: "Month",
                         period: 1,
                         amount: AMOUNT,
-                        startDate: new Date().toISOString()
+                        startDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
                     }
                 },
                 {
@@ -209,7 +209,8 @@
                             type: "payment_success",
                             telegram_id: String(tgId),
                             transaction_id: (options && options.transactionId) || null,
-                            invoice_id: INVOICE_ID
+                            invoice_id: INVOICE_ID,
+                            subscription_id: (options && options.subscriptionId) || null
                         });
                     },
                     onFail: function (reason, options) {
@@ -224,7 +225,8 @@
                                 type: "payment_success",
                                 telegram_id: String(tgId),
                                 transaction_id: (paymentResult.transactionId) || null,
-                                invoice_id: INVOICE_ID
+                                invoice_id: INVOICE_ID,
+                                subscription_id: (paymentResult.subscriptionId) || null
                             });
                             return;
                         }
